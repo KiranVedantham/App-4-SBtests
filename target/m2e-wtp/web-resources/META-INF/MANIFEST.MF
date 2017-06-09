@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Implementation-Title: App-4-SBtests
+Implementation-Version: 1
+Built-By: appcloudtester
+Implementation-Vendor-Id: App-4-SBtests
+Build-Jdk: 1.8.0_111
+Implementation-URL: http://projects.spring.io/spring-boot/App-4-SBtest
+ s/
+Created-By: Maven Integration for Eclipse
+Implementation-Vendor: Pivotal Software, Inc.
+
