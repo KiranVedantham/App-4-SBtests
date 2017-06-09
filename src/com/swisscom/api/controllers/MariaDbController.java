@@ -328,7 +328,7 @@ public class MariaDbController {
 				preparedStatement.setString(2, "Vedantham " + i);
 				preparedStatement.setString(3, "36");
 				preparedStatement.setString(4, i + "kk@kmail.com");
-				preparedStatement.setAsciiStream(5,inputstreaminputstreaminputstreaminputstreaminputstreaminputstreaminputstreaminputstreaminputstream, (int) file.length());
+				preparedStatement.setAsciiStream(5,inputstream, (int) file.length());
 				preparedStatement.executeUpdate();
 				System.out.println("Table \"Persons\" inseted file "+file.getName()+i);
 			} catch (SQLException e) {
