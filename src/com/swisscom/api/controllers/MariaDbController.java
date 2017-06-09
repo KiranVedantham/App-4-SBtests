@@ -317,18 +317,18 @@ public class MariaDbController {
 		PreparedStatement preparedStatement = null;
 		Connection dbConnection = null;
 		dbConnection = (Connection) sc.getServiceInstance();
-		   FileInputStream fis = null;
+		   FileInputStream inputstream = null;
 			String insertTableSQL = "INSERT INTO Persons" + "(lastname, firstname, age,email,Photo) VALUES" + "(?,?,?,?,?)";
 		 File file = rutil.getFile(FILENAME);
 		for (int i = 1; i < 5; i++) {
 			try {
-			      fis = new FileInputStream(file);
+				inputstream = new FileInputStream(file);
 				preparedStatement = dbConnection.prepareStatement(insertTableSQL);
 				preparedStatement.setString(1, "Kiran " + i);
 				preparedStatement.setString(2, "Vedantham " + i);
 				preparedStatement.setString(3, "36");
 				preparedStatement.setString(4, i + "kk@kmail.com");
-				preparedStatement.setAsciiStream(5,fis, (int) file.length());
+				preparedStatement.setAsciiStream(5,inputstream, (int) file.length());
 				preparedStatement.executeUpdate();
 				System.out.println("Table \"Persons\" inseted file "+file.getName()+i);
 			} catch (SQLException e) {
