@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -42,7 +43,9 @@ import redis.clients.jedis.Jedis;
 @Configuration
 public class AllServiceConfiguration {
 	@Value("${vcap.services}")
-	private String vcapServices;
+	//private String vcapServices ="{'nova_redis': [      {        'credentials': {          'host': 'kubernetes-service-node.service.consul',          'port': 47998,          'master_port': 47998,          'slave_ports': [   47750,            35803          ],          'password': 'Zvp5srqmWoiTl3VYYEUzvIpd6Gt50m'        },        'syslog_drain_url': null,        'volume_mounts': [],        'label': 'nova_redis',        'provider': null,        'plan': 'small',        'name': 'smallredinova',        'tags': []      }    ]  }";
+	private String vcapServices ;
+//	@Value("${vcap.}")
 	private String jdbcurl;
 	private String database;
 	private String label;
@@ -59,19 +62,26 @@ public class AllServiceConfiguration {
 	private String ops_manager_url;
 	private String ops_manager_user;
 	private String ops_manager_password;
+	private int slaveport1;
+	private int slaveport2;
+	private String opt ="default";
 
+	public Object getServiceInstance(String option) throws Exception {
+		String serviceLable = getDBlabel();
+		Object obj = getConntoServiceInstance(serviceLable,option);
+		return obj;
 
-
+	}
 	public Object getServiceInstance() throws Exception {
 		String serviceLable = getDBlabel();
-		Object obj = getConntoServiceInstance(serviceLable);
+		Object obj = getConntoServiceInstance(serviceLable,opt);
 		return obj;
 
 	}
 
-	private Object getConntoServiceInstance(String serviceLable) throws JSONException, SQLException, Exception {
+	private Object getConntoServiceInstance(String serviceLable,String option) throws JSONException, SQLException, Exception {
 		Object obj = null;
-		switch (serviceLable.toLowerCase()) {
+		switch (serviceLable) {
 		case "mariadb":
 			System.out.println("Creating MariaDB Connection!");
 			obj = getMariaDBInstance(serviceLable);
@@ -86,7 +96,11 @@ public class AllServiceConfiguration {
 			break;
 		case "dynstrg":
 			System.out.println("Creating Dynstrg Connection!");
-			obj=getAmazonS3(serviceLable);
+			obj = getAmazonS3(serviceLable);
+			break;
+		case "dynstrg_ECS":
+			System.out.println("Creating Dynstrg ECS Connection!");
+			obj = getAmazonS3(serviceLable);
 			break;
 		case "rabbitmq":
 			System.out.println("Creating  Rabbitmq Connection!");
@@ -96,9 +110,13 @@ public class AllServiceConfiguration {
 			System.out.println("Creating Elk Connection!");
 			obj = getElkCredntials(serviceLable);
 			break;
+		case "nova_redis":
+			System.out.println("Creating nova_redis Connection!");
+			obj = getRedisInstance(serviceLable,option);
+			break;
 		case "redis":
 			System.out.println("Creating Redis Connection!");
-			obj = getRedisInstance(serviceLable);
+			obj = getRedisInstance(serviceLable,option);
 			break;
 		case "mongodbent":
 			System.out.println("Creating Mongodbent Connection!");
@@ -110,7 +128,7 @@ public class AllServiceConfiguration {
 			break;
 		case "redisent":
 			System.out.println("Creating Redisent Connection!");
-			obj = getRedisInstance(serviceLable);
+			obj = getRedisInstance(serviceLable,option);
 			break;
 		default:
 			System.out.println("No Connection created");
@@ -134,19 +152,19 @@ public class AllServiceConfiguration {
 		}
 
 		return connection;
-	
+
 	}
 
 	private Object getElkCredntials(String serviceLable) throws JSONException {
 		setCredentioals(serviceLable);
-		
-		
+
 		final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-		
+
 		credentialsProvider.setCredentials(AuthScope.ANY,
 				new UsernamePasswordCredentials(elasticCred.elasticSearchUsername, elasticCred.elasticSearchPassword));
 
-		RestClient restClient = RestClient.builder(new HttpHost(elasticCred.getElasticSearchHost(), elasticCred.elasticSearchPort))
+		RestClient restClient = RestClient
+				.builder(new HttpHost(elasticCred.getElasticSearchHost(), elasticCred.elasticSearchPort))
 				.setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
 					@Override
 					public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
@@ -158,7 +176,7 @@ public class AllServiceConfiguration {
 
 	private Object getAmazonS3(String serviceLable) throws JSONException {
 		setCredentioals(serviceLable);
-		BasicAWSCredentials awscredtials = new BasicAWSCredentials(accessKey,sharedSecret);
+		BasicAWSCredentials awscredtials = new BasicAWSCredentials(accessKey, sharedSecret);
 		AmazonS3Client amazonS3Client = new AmazonS3Client(awscredtials);
 		amazonS3Client.setEndpoint(accessHost);
 		return amazonS3Client;
@@ -167,14 +185,14 @@ public class AllServiceConfiguration {
 	private Object getMongoDBEntInstance(String serviceLable) throws JSONException, UnknownHostException {
 		setCredentioals(serviceLable);
 		MongoClientURI mongo = new MongoClientURI(database_uri);
-		System.out.println("database_uri  : "+mongo.getHosts().toString());
+		System.out.println("database_uri  : " + mongo.getHosts().toString());
 		@SuppressWarnings("resource")
 		MongoClient mclient = new MongoClient(mongo);
-		MongoDatabase mongodb= mclient.getDatabase(database);
-		DB db= 	mclient.getDB(database);
-		System.out.println("MongoDB  Connection Created"+db.command("replSetGetStatus"));
+		MongoDatabase mongodb = mclient.getDatabase(database);
+		DB db = mclient.getDB(database);
+		System.out.println("MongoDB  Connection Created" + db.command("replSetGetStatus"));
 		System.out.println("MongoDB  Connection Created");
-		return  mongodb;
+		return mongodb;
 
 	}
 
@@ -189,34 +207,46 @@ public class AllServiceConfiguration {
 		return connection;
 	}
 
-	private Object getRedisInstance(String serviceLable) throws JSONException {
+	private Object getRedisInstance(String serviceLable,String slave) throws JSONException {
+		Jedis jedis =null;
 		setCredentioals(serviceLable);
-		Jedis jedis = new Jedis(host, port);
-		jedis.auth(password);
+		
+		if (slave.equalsIgnoreCase("slave1")){
+			System.out.println("Connecting to  :" +host+  "  slaveport1 : "+slaveport1);
+			 jedis = new Jedis(host, slaveport1,600);
+			jedis.auth(password);
+		}else if  (slave.equalsIgnoreCase("slave2")){
+			System.out.println("Connecting to  :" +host+  "  slaveport2 : "+slaveport2);
+			 jedis = new Jedis(host, slaveport2,600);
+				jedis.auth(password);
+		}else {
+			System.out.println("Connecting to  :" +host+  "  Port : "+port);
+			jedis = new Jedis(host, port,600);
+				jedis.auth(password);
+		}
+			
 		System.out.println("Redis  Connection Created :" + jedis.toString());
 		return jedis;
 	}
-
 	private Object getMongoDBInstance(String serviceLable) throws JSONException, IOException {
 		setCredentioals(serviceLable);
 		MongoClientURI mongo = new MongoClientURI(database_uri);
-		@SuppressWarnings("resource")
 		MongoClientOptions.Builder options_builder = new MongoClientOptions.Builder();
-	    options_builder.maxConnectionIdleTime(60000);
-	    MongoClientOptions options = options_builder.build();
-	    
+		options_builder.maxConnectionIdleTime(60000);
+		MongoClientOptions options = options_builder.build();
 		MongoClient mclient = new MongoClient(mongo);
-		MongoDatabase mongodb= mclient.getDatabase(database);
+		MongoDatabase mongodb = mclient.getDatabase(database);
 		System.out.println("MongoDB  Connection Created");
-		return  mongodb;
+		return mongodb;
 	}
+
 	@SuppressWarnings({ "resource", "deprecation" })
 	public Object getMongoDBInstance1(String serviceLable) throws JSONException, IOException {
 		setCredentioals(serviceLable);
 		MongoClientURI mongo = new MongoClientURI(database_uri);
 		MongoClient mclient = new MongoClient(mongo);
-		DB db= 	mclient.getDB(database);
-		return  db;
+		DB db = mclient.getDB(database);
+		return db;
 	}
 
 	private void setCredentioals(String servicename) throws JSONException {
@@ -241,7 +271,7 @@ public class AllServiceConfiguration {
 			this.database_uri = (String) credntials.get("database_uri");
 			this.database_uri = getdetails(database_uri, "mongodb");
 			this.database = (String) credntials.get("database");
-			this.database_uri =this.database_uri+"/"+this.database;
+			this.database_uri = this.database_uri + "/" + this.database;
 			this.ops_manager_url = (String) credntials.get("ops_manager_url");
 			this.ops_manager_user = (String) credntials.get("ops_manager_user");
 			this.ops_manager_password = (String) credntials.get("ops_manager_password");
@@ -250,7 +280,7 @@ public class AllServiceConfiguration {
 			elasticCred = new ElasticCredentials();
 			this.elasticCred.setElasticSearchUsername((String) credntials.get("elasticSearchUsername"));
 			this.elasticCred.setElasticSearchPassword((String) credntials.get("elasticSearchPassword"));
-			this.elasticCred.setElasticSearchHost( (String) credntials.get("elasticSearchHost"));
+			this.elasticCred.setElasticSearchHost((String) credntials.get("elasticSearchHost"));
 			this.elasticCred.setElasticSearchPort((int) credntials.get("elasticSearchPort"));
 		}
 		if (servicename.equalsIgnoreCase("dynstrg")) {
@@ -258,6 +288,11 @@ public class AllServiceConfiguration {
 			this.accessKey = (String) credntials.get("accessKey");
 			this.sharedSecret = (String) credntials.get("sharedSecret");
 
+		}
+		if (servicename.equalsIgnoreCase("dynstrg_ECS")) {
+			this.accessHost = (String) credntials.get("accessHost");
+			this.accessKey = (String) credntials.get("accessKey");
+			this.sharedSecret = (String) credntials.get("sharedSecret");
 		}
 		if (servicename.equalsIgnoreCase("rabbitmq")) {
 			this.uri = (String) credntials.get("uri");
@@ -273,6 +308,16 @@ public class AllServiceConfiguration {
 			this.host = (String) credntials.get("host");
 			this.port = (int) credntials.get("port");
 			this.password = (String) credntials.get("password");
+		}
+		if (servicename.equalsIgnoreCase("nova_redis")) {
+			this.host = (String) credntials.get("host");
+			this.port = (int) credntials.get("port");
+			this.password = (String) credntials.get("password");
+			ArrayList  slaves=  (ArrayList) credntials.get("slave_ports");
+			this.slaveport1 = (int) slaves.get(0);
+			this.slaveport2 = (int) slaves.get(1);
+			System.out.println("Slave ports  slaveport1 :" +slaveport1);
+			System.out.println("Slave ports  slaveport2 :" +slaveport2);
 		}
 		if (servicename.equalsIgnoreCase("redisent")) {
 			this.host = (String) credntials.get("host");
@@ -309,14 +354,15 @@ public class AllServiceConfiguration {
 			if (stri.contains(to_check))
 				database_uri = stri;
 		}
-		if(database_uri.contains("-1.service.consul")){
-			database_uri=database_uri.replace("-1.service.consul", "-0.service.consul");
+		if (database_uri.contains("-1.service.consul")) {
+			database_uri = database_uri.replace("-1.service.consul", "-0.service.consul");
 		}
-		if(database_uri.contains("-2.service.consul")){
-			database_uri=	database_uri.replace("-2.service.consul", "-0.service.consul");
+		if (database_uri.contains("-2.service.consul")) {
+			database_uri = database_uri.replace("-2.service.consul", "-0.service.consul");
 		}
 		return database_uri;
 	}
+
 	public Object getMonogDBUserInfo() throws Exception {
 		Object obj = null;
 		String serviceLable = getDBlabel();

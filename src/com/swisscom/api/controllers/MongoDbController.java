@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
 import com.mongodb.MongoException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -31,7 +30,6 @@ import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.gridfs.GridFS;
-import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 import com.swisscom.api.AllServiceConfiguration;
 import com.swisscom.api.ResourceUtil;
@@ -60,9 +58,8 @@ public class MongoDbController {
 			document.put("lastname", "Swisscom");
 			document.put("createdDate", new Date());
 			table.insertOne(document);
-			;
 			System.out.println("Document  is Inserted!");
-
+			return HttpStatus.OK;
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
 		}
@@ -208,9 +205,7 @@ public class MongoDbController {
 	public HttpStatus storageCapacity() throws Exception {
 		try {
 			DB db = (DB) sc.getMongoDBInstance1("mongodb");
-			DBCollection collection = db.getCollection("ImageCollection");
-			ResourceUtil rUtil = new ResourceUtil();
-			File imageFile = rUtil.getFile(FILENAME);
+			File imageFile = rutil.getFile(FILENAME);
 			// create a "photo" namespace
 			GridFS gfsPhoto = new GridFS(db, "photo");
 			for (int i = 0; i < 500; i++) {
@@ -241,9 +236,7 @@ public class MongoDbController {
 	public HttpStatus failstorageCapacity() throws Exception {
 		try {
 			DB db = (DB) sc.getMongoDBInstance1("mongodb");
-			DBCollection collection = db.getCollection("ImageCollection");
-			ResourceUtil rUtil = new ResourceUtil();
-			File imageFile = rUtil.getFile(FILENAME);
+			File imageFile = rutil.getFile(FILENAME);
 			// create a "photo" namespace
 			GridFS gfsPhoto = new GridFS(db, "photo");
 			for (int i = 0; i < 5; i++) {

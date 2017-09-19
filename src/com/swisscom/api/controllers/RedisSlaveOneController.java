@@ -21,22 +21,22 @@ import com.swisscom.api.ResourceUtil;
 import redis.clients.jedis.Jedis;
 
 @RestController
-@RequestMapping("/redis")
-public class RedisController {
+@RequestMapping("/redis/slave1")
+public class RedisSlaveOneController {
 
 	@Autowired
 	private AllServiceConfiguration sc;
 	private static final String FILENAME = "Sample.csv";
-
+	private static final String slave = "slave1";
 	@RequestMapping(path = "/insertdata", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> insertData() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		jedis.set("Sample1", "Hello All This is Redis Sample");
 		return new ResponseEntity<String>(HttpStatus.OK);
 	}
 	@RequestMapping(path = "/insertlist", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> insertList() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		//store data in redis list 
 	      jedis.lpush("AppCloud-list", "Redis"); 
 	      jedis.lpush("AppCloud-list", "Mongodb"); 
@@ -45,7 +45,7 @@ public class RedisController {
 	}
 	@RequestMapping(path = "/searchList", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> searchList() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		 List<String> list = jedis.lrange("AppCloud-list", 0 ,5); 
 	      
 	      for(int i = 0; i<list.size(); i++) { 
@@ -55,7 +55,7 @@ public class RedisController {
 	}
 	@RequestMapping(path = "/searchdata", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> searchData() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		System.out.println("Message returned : " + jedis.get("Sample1"));
 		return new ResponseEntity<String>(HttpStatus.OK);
 	}
@@ -64,7 +64,7 @@ public class RedisController {
 			MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> redisLoad() throws Exception {
 		String message = getdatafromfile(FILENAME);
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		for (int i = 0; i < 20; i++) {
 			jedis.set(UUID.randomUUID().toString().replace("-", ""), message);
 			System.out.println("MEssage load iteration"+i);
@@ -76,7 +76,7 @@ public class RedisController {
 	@RequestMapping(path = "/chksize", method = RequestMethod.GET, produces = {
 			MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> redisDbSize() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		System.out.println("jedis.getDB().SIZE :"+jedis.getDB().SIZE);
 		return new ResponseEntity<String>(jedis.dbSize().toString(),HttpStatus.OK);
 	}
@@ -84,14 +84,14 @@ public class RedisController {
 	@RequestMapping(value  = "/info/{storge}", method = RequestMethod.GET, produces = {
 			MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> redisinfo(@PathVariable String storage) throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		System.out.println("jedis.info() :"+jedis.info());
 		return new ResponseEntity<String>(jedis.info(),HttpStatus.OK);
 	}
 	@RequestMapping(path = "/info", method = RequestMethod.GET, produces = {
 			MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> redisinfo() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		System.out.println("jedis.info() :"+jedis.info());
 		return new ResponseEntity<String>(jedis.info(),HttpStatus.OK);
 	}
@@ -99,7 +99,7 @@ public class RedisController {
 	
 	@RequestMapping(path = "/loadsearch", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> loadSearch() throws Exception {
-		Jedis jedis = (Jedis)sc.getServiceInstance();
+		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
 		for (int i = 0; i < 10; i++) {
 			System.out.println("Message returned : " + jedis.get("Test"+i));
 		}

@@ -250,7 +250,7 @@ public class MariaDbController {
 		   FileInputStream fis = null;
 			String insertTableSQL = "INSERT INTO Persons" + "(lastname, firstname, age,email,Photo) VALUES" + "(?,?,?,?,?)";
 		 File file = rutil.getFile(FILENAME);
-		for (int i = 1; i < 1024; i++) {
+		for (int i = 0; i < 1000; i++) {
 			try {
 			      fis = new FileInputStream(file);
 				preparedStatement = dbConnection.prepareStatement(insertTableSQL);
@@ -296,7 +296,7 @@ public class MariaDbController {
 				preparedStatement.setString(4, i + "kk@kmail.com");
 				preparedStatement.setAsciiStream(5,fis, (int) file.length());
 				preparedStatement.executeUpdate();
-				System.out.println("Table \"Persons\" inseted file "+file.getName()+i);
+				System.out.println("Table \"Persons\" inserted file "+file.getName()+i);
 			} catch (SQLException e) {
 				System.out.println(e.getMessage());
 			}
