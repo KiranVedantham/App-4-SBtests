@@ -3,7 +3,9 @@ package com.swisscom.api.controllers;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,12 +31,21 @@ public class RedisSlaveOneController {
 	private AllServiceConfiguration sc;
 	private static final String FILENAME = "Sample.csv";
 	private static final String slave = "slave1";
-	@RequestMapping(path = "/insertdata", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
-	public ResponseEntity<String> insertData() throws Exception {
+	@RequestMapping(path = "/insertdata", method = RequestMethod.POST, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
+//	public ResponseEntity<String> insertData() throws Exception {
+//		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
+//		jedis.set("Sample1", "Hello All This is Redis Sample");
+//		return new ResponseEntity<String>(HttpStatus.OK);
+//	}
+	public ResponseEntity<Map<String,String>> insertData(@RequestBody Map<String,String> payload) throws Exception {
 		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
-		jedis.set("Sample1", "Hello All This is Redis Sample");
-		return new ResponseEntity<String>(HttpStatus.OK);
+		for (Map.Entry<String, String> entry : payload.entrySet())
+		{
+			jedis.set(entry.getKey(), entry.getValue());
+		}
+		return new ResponseEntity<Map<String,String>>(payload, HttpStatus.OK);
 	}
+	
 	@RequestMapping(path = "/insertlist", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseEntity<String> insertList() throws Exception {
 		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
@@ -53,11 +65,19 @@ public class RedisSlaveOneController {
 	      } 
 		return new ResponseEntity<String>(HttpStatus.OK);
 	}
-	@RequestMapping(path = "/searchdata", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
-	public ResponseEntity<String> searchData() throws Exception {
+//	@RequestMapping(path = "/searchdata", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
+    @SuppressWarnings("null")
+//	public ResponseEntity<String> searchData() throws Exception {
+//		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
+//		System.out.println("Message returned : " + jedis.get("Sample1"));
+//		return new ResponseEntity<String>(HttpStatus.OK);
+//	}
+	@RequestMapping(value = "/searchdata/{redisKey}", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
+	public ResponseEntity<Map<String,String>> searchData(@PathVariable("redisKey") String redisKey) throws Exception {
 		Jedis jedis = (Jedis)sc.getServiceInstance(slave);
-		System.out.println("Message returned : " + jedis.get("Sample1"));
-		return new ResponseEntity<String>(HttpStatus.OK);
+		Map<String,String> payload = new HashMap<String,String>() ;
+		payload.put(redisKey, jedis.get(redisKey)) ;
+		return new ResponseEntity<Map<String,String>>(payload,HttpStatus.OK);
 	}
 
 	@RequestMapping(path = "/load", method = RequestMethod.GET, produces = {

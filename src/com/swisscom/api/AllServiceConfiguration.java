@@ -42,7 +42,7 @@ import redis.clients.jedis.Jedis;
 @SuppressWarnings("unused")
 @Configuration
 public class AllServiceConfiguration {
-	@Value("${vcap.services}")
+	@Value("${vcap.services:}")
 	//private String vcapServices ="{'nova_redis': [      {        'credentials': {          'host': 'kubernetes-service-node.service.consul',          'port': 47998,          'master_port': 47998,          'slave_ports': [   47750,            35803          ],          'password': 'Zvp5srqmWoiTl3VYYEUzvIpd6Gt50m'        },        'syslog_drain_url': null,        'volume_mounts': [],        'label': 'nova_redis',        'provider': null,        'plan': 'small',        'name': 'smallredinova',        'tags': []      }    ]  }";
 	private String vcapServices ;
 //	@Value("${vcap.}")
@@ -50,21 +50,28 @@ public class AllServiceConfiguration {
 	private String database;
 	private String label;
 	private String database_uri;
+	@Value("${cred1:}")
 	private String host;
+	@Value("${cred2:0}")
 	private int port;
 	private String accessHost;
 	private String accessKey;
 	private String sharedSecret;
 	private String uri;
 	private String vhost;
+	@Value("${cred3:}")
 	private String password;
 	private ElasticCredentials elasticCred;
 	private String ops_manager_url;
 	private String ops_manager_user;
 	private String ops_manager_password;
+	@Value("${cred4:0}")
 	private int slaveport1;
+	@Value("${cred5:0}")
 	private int slaveport2;
 	private String opt ="default";
+	@Value("${cred6:}")
+	private String dbLabel;
 
 	public Object getServiceInstance(String option) throws Exception {
 		String serviceLable = getDBlabel();
@@ -140,7 +147,7 @@ public class AllServiceConfiguration {
 
 	private Object getMariaDBEntInstance(String serviceLable) throws JSONException, SQLException {
 
-		setCredentioals(serviceLable);
+		setCredentials(serviceLable);
 		Connection connection = null;
 		Driver myDriver = new com.mysql.jdbc.Driver();
 		DriverManager.registerDriver(myDriver);
@@ -155,8 +162,8 @@ public class AllServiceConfiguration {
 
 	}
 
-	private Object getElkCredntials(String serviceLable) throws JSONException {
-		setCredentioals(serviceLable);
+	private Object getElkCredntials(String serviceLabel) throws JSONException {
+		setCredentials(serviceLabel);
 
 		final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
 
@@ -174,16 +181,16 @@ public class AllServiceConfiguration {
 		return restClient;
 	}
 
-	private Object getAmazonS3(String serviceLable) throws JSONException {
-		setCredentioals(serviceLable);
+	private Object getAmazonS3(String serviceLabel) throws JSONException {
+		setCredentials(serviceLabel);
 		BasicAWSCredentials awscredtials = new BasicAWSCredentials(accessKey, sharedSecret);
 		AmazonS3Client amazonS3Client = new AmazonS3Client(awscredtials);
 		amazonS3Client.setEndpoint(accessHost);
 		return amazonS3Client;
 	}
 
-	private Object getMongoDBEntInstance(String serviceLable) throws JSONException, UnknownHostException {
-		setCredentioals(serviceLable);
+	private Object getMongoDBEntInstance(String serviceLabel) throws JSONException, UnknownHostException {
+		setCredentials(serviceLabel);
 		MongoClientURI mongo = new MongoClientURI(database_uri);
 		System.out.println("database_uri  : " + mongo.getHosts().toString());
 		@SuppressWarnings("resource")
@@ -199,7 +206,7 @@ public class AllServiceConfiguration {
 	private Object getRabitMQInstance(String serviceLable) throws JSONException, KeyManagementException,
 			NoSuchAlgorithmException, URISyntaxException, IOException, TimeoutException {
 
-		setCredentioals(serviceLable);
+		setCredentials(serviceLable);
 		ConnectionFactory factory = new ConnectionFactory();
 		factory.setUri(uri);
 		com.rabbitmq.client.Connection connection = factory.newConnection();
@@ -209,8 +216,9 @@ public class AllServiceConfiguration {
 
 	private Object getRedisInstance(String serviceLable,String slave) throws JSONException {
 		Jedis jedis =null;
-		setCredentioals(serviceLable);
-		
+		if (host.isEmpty()) {
+			setCredentials(serviceLable);
+		}
 		if (slave.equalsIgnoreCase("slave1")){
 			System.out.println("Connecting to  :" +host+  "  slaveport1 : "+slaveport1);
 			 jedis = new Jedis(host, slaveport1,600);
@@ -229,7 +237,7 @@ public class AllServiceConfiguration {
 		return jedis;
 	}
 	private Object getMongoDBInstance(String serviceLable) throws JSONException, IOException {
-		setCredentioals(serviceLable);
+		setCredentials(serviceLable);
 		MongoClientURI mongo = new MongoClientURI(database_uri);
 		MongoClientOptions.Builder options_builder = new MongoClientOptions.Builder();
 		options_builder.maxConnectionIdleTime(60000);
@@ -242,98 +250,105 @@ public class AllServiceConfiguration {
 
 	@SuppressWarnings({ "resource", "deprecation" })
 	public Object getMongoDBInstance1(String serviceLable) throws JSONException, IOException {
-		setCredentioals(serviceLable);
+		setCredentials(serviceLable);
 		MongoClientURI mongo = new MongoClientURI(database_uri);
 		MongoClient mclient = new MongoClient(mongo);
 		DB db = mclient.getDB(database);
 		return db;
 	}
 
-	private void setCredentioals(String servicename) throws JSONException {
+	private void setCredentials(String servicename) throws JSONException {
 		CloudfoundEnvironmentHelper helper = new CloudfoundEnvironmentHelper();
-		Map<String, Object> credntials = CloudfoundEnvironmentHelper.parseCredentials(vcapServices, Optional.empty())
+		Map<String, Object> credentials = CloudfoundEnvironmentHelper.parseCredentials(vcapServices, Optional.empty())
 				.get();
 
 		if (servicename.equalsIgnoreCase("mariadb")) {
-			this.jdbcurl = (String) credntials.get("jdbcUrl");
-			this.database = (String) credntials.get("database");
+			this.jdbcurl = (String) credentials.get("jdbcUrl");
+			this.database = (String) credentials.get("database");
 		}
 
 		if (servicename.equalsIgnoreCase("mariadbent")) {
-			this.jdbcurl = (String) credntials.get("jdbcUrl");
-			this.database = (String) credntials.get("database");
+			this.jdbcurl = (String) credentials.get("jdbcUrl");
+			this.database = (String) credentials.get("database");
 		}
 		if (servicename.equalsIgnoreCase("mongodb")) {
-			this.database_uri = (String) credntials.get("database_uri");
-			this.database = (String) credntials.get("database");
+			this.database_uri = (String) credentials.get("database_uri");
+			this.database = (String) credentials.get("database");
 		}
 		if (servicename.equalsIgnoreCase("mongodbent")) {
-			this.database_uri = (String) credntials.get("database_uri");
+			this.database_uri = (String) credentials.get("database_uri");
 			this.database_uri = getdetails(database_uri, "mongodb");
-			this.database = (String) credntials.get("database");
+			this.database = (String) credentials.get("database");
 			this.database_uri = this.database_uri + "/" + this.database;
-			this.ops_manager_url = (String) credntials.get("ops_manager_url");
-			this.ops_manager_user = (String) credntials.get("ops_manager_user");
-			this.ops_manager_password = (String) credntials.get("ops_manager_password");
+			this.ops_manager_url = (String) credentials.get("ops_manager_url");
+			this.ops_manager_user = (String) credentials.get("ops_manager_user");
+			this.ops_manager_password = (String) credentials.get("ops_manager_password");
 		}
 		if (servicename.equalsIgnoreCase("elk")) {
 			elasticCred = new ElasticCredentials();
-			this.elasticCred.setElasticSearchUsername((String) credntials.get("elasticSearchUsername"));
-			this.elasticCred.setElasticSearchPassword((String) credntials.get("elasticSearchPassword"));
-			this.elasticCred.setElasticSearchHost((String) credntials.get("elasticSearchHost"));
-			this.elasticCred.setElasticSearchPort((int) credntials.get("elasticSearchPort"));
+			this.elasticCred.setElasticSearchUsername((String) credentials.get("elasticSearchUsername"));
+			this.elasticCred.setElasticSearchPassword((String) credentials.get("elasticSearchPassword"));
+			this.elasticCred.setElasticSearchHost((String) credentials.get("elasticSearchHost"));
+			this.elasticCred.setElasticSearchPort((int) credentials.get("elasticSearchPort"));
 		}
 		if (servicename.equalsIgnoreCase("dynstrg")) {
-			this.accessHost = (String) credntials.get("accessHost");
-			this.accessKey = (String) credntials.get("accessKey");
-			this.sharedSecret = (String) credntials.get("sharedSecret");
+			this.accessHost = (String) credentials.get("accessHost");
+			this.accessKey = (String) credentials.get("accessKey");
+			this.sharedSecret = (String) credentials.get("sharedSecret");
 
 		}
 		if (servicename.equalsIgnoreCase("dynstrg_ECS")) {
-			this.accessHost = (String) credntials.get("accessHost");
-			this.accessKey = (String) credntials.get("accessKey");
-			this.sharedSecret = (String) credntials.get("sharedSecret");
+			this.accessHost = (String) credentials.get("accessHost");
+			this.accessKey = (String) credentials.get("accessKey");
+			this.sharedSecret = (String) credentials.get("sharedSecret");
 		}
 		if (servicename.equalsIgnoreCase("rabbitmq")) {
-			this.uri = (String) credntials.get("uri");
-			this.host = (String) credntials.get("host");
-			this.vhost = (String) credntials.get("vhost");
+			this.uri = (String) credentials.get("uri");
+			this.host = (String) credentials.get("host");
+			this.vhost = (String) credentials.get("vhost");
 		}
 		if (servicename.equalsIgnoreCase("rabbitmqent")) {
-			this.uri = (String) credntials.get("uri");
-			this.host = (String) credntials.get("host");
-			this.vhost = (String) credntials.get("vhost");
+			this.uri = (String) credentials.get("uri");
+			this.host = (String) credentials.get("host");
+			this.vhost = (String) credentials.get("vhost");
 		}
 		if (servicename.equalsIgnoreCase("redis")) {
-			this.host = (String) credntials.get("host");
-			this.port = (int) credntials.get("port");
-			this.password = (String) credntials.get("password");
+			this.host = (String) credentials.get("host");
+			this.port = (int) credentials.get("port");
+			this.password = (String) credentials.get("password");
 		}
 		if (servicename.equalsIgnoreCase("nova_redis")) {
-			this.host = (String) credntials.get("host");
-			this.port = (int) credntials.get("port");
-			this.password = (String) credntials.get("password");
-			ArrayList  slaves=  (ArrayList) credntials.get("slave_ports");
-			this.slaveport1 = (int) slaves.get(0);
-			this.slaveport2 = (int) slaves.get(1);
-			System.out.println("Slave ports  slaveport1 :" +slaveport1);
-			System.out.println("Slave ports  slaveport2 :" +slaveport2);
+			if (this.host.isEmpty()) {
+				this.host = (String) credentials.get("host");
+				this.port = (int) credentials.get("port");
+				this.password = (String) credentials.get("password");
+				ArrayList  slaves=  (ArrayList) credentials.get("slave_ports");
+				this.slaveport1 = (int) slaves.get(0);
+				this.slaveport2 = (int) slaves.get(1);
+				System.out.println("Slave ports  slaveport1 :" +slaveport1);
+				System.out.println("Slave ports  slaveport2 :" +slaveport2);
+			}
 		}
 		if (servicename.equalsIgnoreCase("redisent")) {
-			this.host = (String) credntials.get("host");
-			this.port = (int) credntials.get("port");
-			this.password = (String) credntials.get("password");
+			this.host = (String) credentials.get("host");
+			this.port = (int) credentials.get("port");
+			this.password = (String) credentials.get("password");
 
 		}
 	}
 
 	public String getDBlabel() throws JSONException {
-		String dbLabel = CloudfoundEnvironmentHelper.parseLabels(vcapServices);
+		String dbLabel;
+		if (this.dbLabel.isEmpty()) {
+			dbLabel = CloudfoundEnvironmentHelper.parseLabels(vcapServices);
+		} else {
+			dbLabel = this.dbLabel ;
+		}
 		return dbLabel;
 	}
 
 	private Object getMariaDBInstance(String serviceLable) throws JSONException, SQLException {
-		setCredentioals(serviceLable);
+		setCredentials(serviceLable);
 		Connection connection = null;
 		Driver myDriver = new com.mysql.jdbc.Driver();
 		DriverManager.registerDriver(myDriver);
