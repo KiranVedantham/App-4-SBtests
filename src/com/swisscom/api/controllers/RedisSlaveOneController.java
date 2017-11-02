@@ -154,4 +154,19 @@ public class RedisSlaveOneController {
 		}
 		return sb.toString();
 	}
+	
+	@RequestMapping(value = "/deletedata", method = RequestMethod.DELETE, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE }, consumes = {MediaType.ALL_VALUE})
+	public ResponseEntity<Map<String, String>> deleteData(@RequestBody String keyForDelete) throws Exception {
+		String deletedKeys = "0";
+		Map<String, String> payload = new HashMap() ;
+		try {
+			Jedis jedis = (Jedis)sc.getServiceInstance(slave);
+			deletedKeys = String.valueOf(jedis.del(keyForDelete));
+			payload.put("Number of items deleted", deletedKeys) ;
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			throw ex;
+		}
+		return new ResponseEntity<Map<String, String>> (payload, HttpStatus.OK);
+	}
 }

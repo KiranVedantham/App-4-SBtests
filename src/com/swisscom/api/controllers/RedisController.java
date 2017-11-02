@@ -71,6 +71,9 @@ public class RedisController {
 	public ResponseEntity<Map<String,String>> searchData(@PathVariable("redisKey") String redisKey) throws Exception {
 		Jedis jedis = (Jedis)sc.getServiceInstance();
 		Map<String,String> payload = new HashMap<String,String>() ;
+		if (jedis.get(redisKey) == null) {
+			return new ResponseEntity<Map<String,String>>(payload,HttpStatus.NOT_FOUND);
+		}
 		payload.put(redisKey, jedis.get(redisKey)) ;
 		return new ResponseEntity<Map<String,String>>(payload,HttpStatus.OK);
 	}
@@ -103,12 +106,24 @@ public class RedisController {
 		System.out.println("jedis.info() :"+jedis.info());
 		return new ResponseEntity<String>(jedis.info(),HttpStatus.OK);
 	}
-	@RequestMapping(path = "/info", method = RequestMethod.GET, produces = {
-			MediaType.APPLICATION_JSON_UTF8_VALUE })
-	public ResponseEntity<String> redisinfo() throws Exception {
+	@RequestMapping(path = "/info", method = RequestMethod.GET, produces = {MediaType.APPLICATION_JSON_UTF8_VALUE })
+	public ResponseEntity<Map<String,String>> redisinfo() throws Exception {
 		Jedis jedis = (Jedis)sc.getServiceInstance();
+		String [] temp ;
 		//System.out.println("jedis.info() :"+jedis.info());
-		return new ResponseEntity<String>(jedis.info(),HttpStatus.OK);
+		Map<String,String> payload = new HashMap<String,String>() ;
+		String [] lines = jedis.info().split("\\r?\\n") ;
+		for (String s: lines) {
+			if (s.startsWith("#")) {
+				payload.put("_comment", s) ;
+			} else {
+				if (!s.isEmpty() && s.contains(":")) {
+					temp = s.split(":") ;
+					payload.put(temp[0], temp[1]) ;
+				}
+			}
+		}
+		return new ResponseEntity<Map<String, String>>(payload,HttpStatus.OK);
 	}
 	
 	
@@ -148,5 +163,33 @@ public class RedisController {
 			}
 		}
 		return sb.toString();
+	}
+	
+	@RequestMapping(value = "/deletedata", method = RequestMethod.DELETE, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE }, consumes = {MediaType.ALL_VALUE})
+	public ResponseEntity<Map<String, String>> deleteData(@RequestBody String keyForDelete) throws Exception {
+		String deletedKeys = "0";
+		Map<String, String> payload = new HashMap() ;
+		try {
+			Jedis jedis = (Jedis)sc.getServiceInstance();
+			deletedKeys = String.valueOf(jedis.del(keyForDelete));
+			payload.put("Number of items deleted", deletedKeys) ;
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			throw ex;
+		}
+		return new ResponseEntity<Map<String, String>> (payload, HttpStatus.OK);
+	}
+	
+	@RequestMapping(value = "/flushdata", method = RequestMethod.DELETE, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE }, consumes = {MediaType.ALL_VALUE})
+	public ResponseEntity<String> flushData() throws Exception {
+		String statusCode = "0";
+		try {
+			Jedis jedis = (Jedis)sc.getServiceInstance();
+			statusCode = jedis.flushDB();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			throw ex;
+		}
+		return new ResponseEntity<String> (statusCode, HttpStatus.OK);
 	}
 }

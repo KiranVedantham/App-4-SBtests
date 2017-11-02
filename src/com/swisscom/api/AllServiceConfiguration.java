@@ -117,10 +117,6 @@ public class AllServiceConfiguration {
 			System.out.println("Creating Elk Connection!");
 			obj = getElkCredntials(serviceLable);
 			break;
-		case "nova_redis":
-			System.out.println("Creating nova_redis Connection!");
-			obj = getRedisInstance(serviceLable,option);
-			break;
 		case "redis":
 			System.out.println("Creating Redis Connection!");
 			obj = getRedisInstance(serviceLable,option);
